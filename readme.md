@@ -4,7 +4,7 @@ KASLRfinder is a small utility that can be used to find where in memory the Wind
 
 The utility can be run as a normal program and requires no administrative privileges.
 
-It works by timing the execution times of failed instructions inside Transactional Synchronization Extensions (TSX) block. TSX was first introduced in Haswell based CPUs; but got disabled due to problems. The TSX instructions are available on all Skylake CPUs. For more information please see the <a target="_blank" href="https://labs.bromium.com/2014/10/27/tsx-improves-timing-attacks-against-kaslr/">blog entry by Rafal Wojtczuk from Bromium Labs</a> or the <a target="_blank" href="https://www.blackhat.com/us-16/briefings.html#breaking-kernel-address-space-layout-randomization-kaslr-with-intel-tsx">Black Hat presentation by Yeongjin, Sangho, and Taesoo from Georgia Institute of Technology.</a>
+It works by timing the execution times of failed instructions inside Transactional Synchronization Extensions (TSX) block. TSX was first introduced in Haswell based CPUs; but got disabled due to problems. The TSX instructions are available on all Skylake CPUs. For more information please see the <a target="_blank" href="https://labs.bromium.com/2014/10/27/tsx-improves-timing-attacks-against-kaslr/">blog entry</a> by Rafal Wojtczuk from Bromium Labs or the <a target="_blank" href="https://www.blackhat.com/us-16/briefings.html#breaking-kernel-address-space-layout-randomization-kaslr-with-intel-tsx">Black Hat presentation</a> by Yeongjin, Sangho, and Taesoo from Georgia Institute of Technology.
 
 Please also have a look at my blog entry, <a href="http://blog.frizk.net/2016/11/windows-10-kaslr-recovery-with-tsx.html">Windows 10 KASLR Recovery with TSX</a>, describing a bit more in-depth about KASLRfinder and how it works.
 
@@ -16,7 +16,8 @@ System Requirements:
 Stability and Limitations:
 ==========================
 * KASLRfinder is far from stable. It won't crash; but some times it will fail to find the memory addresses.
-* KARLRfinder has only been tested on Windows 10 1607 / Skylake CPU.
+* KASLRfinder has only been tested on Windows 10 1607 / Skylake CPU.
+* KASLRfinder haven't been tested on systems with Virtualization Based Security (VBS) or Hyper-V.
 * Feedback is appreciated; but I do not plan to officially support this utility.
 
 Capabilities:
