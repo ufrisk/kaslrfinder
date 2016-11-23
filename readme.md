@@ -22,7 +22,7 @@ Stability and Limitations:
 
 Capabilities:
 =============
-KALRfinder is able to:
+KASLRfinder is able to:
 * Locate the kernel address within an error margin of 1MB.
 * Locate a driver or module address exactly - using a signature based search.
 * Generate new signatures based on user supplied memory addresses.
@@ -31,7 +31,7 @@ Examples:
 =========
 Search for the kernel base address within an error margin of 1MB:
 
-* `kalrfinder.exe`
+* `kaslrfinder.exe`
 
 Search for the exact base address of the driver tcpip.sys (1607/November patches):
 
