@@ -22,10 +22,9 @@ main ENDP
 
 ; -------------------------------------------------------------------------
 ; MEASURE TIMING OF THE EXECUTE OPERATION
-; The execute operation will fail quickly if the page is executable _and_
-; the opcode is correct.
+; The execute operation will fail quickly if the page is executable.
 ; The execute operation will fail slowly if the page is unmapped _or_ if
-; page is mapped as non execute _or_ the opcode is invalid.
+; page is mapped as non execute.
 ; The measurement will sample 0x100 operations, discard the lowest 0x10
 ; results and return the lowest remaining result.
 ; -> rcx :: address to test
