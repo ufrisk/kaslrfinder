@@ -45,6 +45,14 @@ Find out what's wrong with the signature for a driver if it's not detected and t
 
 * `kaslrfinder.exe -sig 01809a015580010 -sigbase 0xFFFFF80878880000 -size 0x0005D000`
 
+Displayed the measured default time threshold (-v = verbose) and measure the timing for address 0xFFFFF80000000000 (-gettime)
+
+* `kaslrfinder.exe -v -gettime 0xFFFFF80000000000`
+
+Set a custom measurement threshold. This value should be inside the range between executable and non-executable memory.
+
+* `kaslrfinder.exe -threshold 0x90`
+
 Signatures:
 ===========
 The best way to find the addresses required to generate the signatures is by using pcileech. Just insert the pcileech kernel module into the target computer. Then use the wx64_driverinfo module.
